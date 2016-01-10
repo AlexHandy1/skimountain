@@ -69,7 +69,7 @@
 
 				var data = generateHeight( 1024, 1024 );
 				var texture = new THREE.CanvasTexture( generateTexture( data, 1024, 1024 ) );
-				var material = new THREE.MeshBasicMaterial( { map: texture, overdraw: 0.5 } );
+				var material = new THREE.MeshBasicMaterial( { map: texture, overdraw: 0.5} );
 
 				var quality = 16, step = 1024 / quality;
 
@@ -161,6 +161,7 @@
 				context.fillRect( 0, 0, width, height );
 
 				image = context.getImageData( 0, 0, width, height );
+				
 				imageData = image.data;
 
 				for ( var i = 0, j = 0, l = imageData.length; i < l; i += 4, j ++  ) {
