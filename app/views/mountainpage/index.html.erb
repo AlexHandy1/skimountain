@@ -37,6 +37,7 @@
 
 		<script src="renderers/Projector.js"></script>
 		<script src="renderers/CanvasRenderer.js"></script>
+		<script src="controls/FirstPersonControls.js"></script>
 
 		<script src="libs/stats.min.js"></script>
 
@@ -46,14 +47,16 @@
 
 			var container, stats;
 
-			var camera, scene, renderer;
+			var camera, controls, scene, renderer;
 
-			var mesh;
+			var particles, snowGeometry, snowMaterials = [], snowParameters, snowI, snowH, snowColor, snowSprite, snowSize;
 
-			var mouseX = 0, mouseY = 0;
+			var mesh, texture;
 
-			var windowHalfX = window.innerWidth / 2;
-			var windowHalfY = window.innerHeight / 2;
+			var worldWidth = 256, worldDepth = 256,
+			worldHalfWidth = worldWidth / 2, worldHalfDepth = worldDepth / 2;
+
+			var clock = new THREE.Clock();
 
 			init();
 			animate();
@@ -62,31 +65,84 @@
 
 				container = document.getElementById( 'container' );
 
-				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
-				camera.position.z = 1000;
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 20000 );
 
 				scene = new THREE.Scene();
 
-				var data = generateHeight( 1024, 1024 );
-				var texture = new THREE.CanvasTexture( generateTexture( data, 1024, 1024 ) );
-				var material = new THREE.MeshBasicMaterial( { map: texture, overdraw: 0.5} );
+				controls = new THREE.FirstPersonControls( camera );
+				controls.movementSpeed = 1000;
+				controls.lookSpeed = 0.1;
 
-				var quality = 16, step = 1024 / quality;
+				data = generateHeight( worldWidth, worldDepth );
 
-				var geometry = new THREE.PlaneGeometry( 2000, 2000, quality - 1, quality - 1 );
+				camera.position.y = data[ worldHalfWidth + worldHalfDepth * worldWidth ] * 10 + 500;
+
+				var geometry = new THREE.PlaneBufferGeometry( 7500, 7500, worldWidth - 1, worldDepth - 1 );
 				geometry.rotateX( - Math.PI / 2 );
 
-				for ( var i = 0, l = geometry.vertices.length; i < l; i ++ ) {
+				var vertices = geometry.attributes.position.array;
 
-					var x = i % quality, y = Math.floor( i / quality );
-					geometry.vertices[ i ].y = data[ ( x * step ) + ( y * step ) * 1024 ] * 2 - 128;
+				for ( var i = 0, j = 0, l = vertices.length; i < l; i ++, j += 3 ) {
+
+					vertices[ j + 1 ] = data[ i ] * 10;
 
 				}
 
-				mesh = new THREE.Mesh( geometry, material );
+				texture = new THREE.CanvasTexture( generateTexture( data, worldWidth, worldDepth ) );
+				texture.wrapS = THREE.ClampToEdgeWrapping;
+				texture.wrapT = THREE.ClampToEdgeWrapping;
+
+				mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: texture } ) );
 				scene.add( mesh );
 
-				renderer = new THREE.CanvasRenderer();
+				//adding snow flakes
+				snowGeometry = new THREE.Geometry();
+
+				sprite1 = THREE.ImageUtils.loadTexture( "textures/sprites/snowflake1.png" );
+				sprite2 = THREE.ImageUtils.loadTexture( "textures/sprites/snowflake2.png" );
+				sprite3 = THREE.ImageUtils.loadTexture( "textures/sprites/snowflake3.png" );
+				sprite4 = THREE.ImageUtils.loadTexture( "textures/sprites/snowflake4.png" );
+				sprite5 = THREE.ImageUtils.loadTexture( "textures/sprites/snowflake5.png" );
+
+				for ( i = 0; i < 10000; i ++ ) {
+
+					var vertex = new THREE.Vector3();
+					vertex.x = Math.random() * 2000 - 1000;
+					vertex.y = Math.random() * 2000 - 1000;
+					vertex.z = Math.random() * 2000 - 1000;
+
+					snowGeometry.vertices.push( vertex );
+
+				}
+
+				snowParameters = [
+					[ [1.0, 0.2, 0.5], sprite2, 20 ],
+					[ [0.95, 0.1, 0.5], sprite3, 15 ],
+					[ [0.90, 0.05, 0.5], sprite1, 10 ],
+					[ [0.85, 0, 0.5], sprite5, 8 ],
+					[ [0.80, 0, 0.5], sprite4, 5 ]
+				];
+
+				for ( i = 0; i < snowParameters.length; i ++ ) {
+
+					snowColor  = snowParameters[i][0];
+					snowSprite = snowParameters[i][1];
+					snowSize   = snowParameters[i][2];
+
+					snowMaterials[i] = new THREE.PointsMaterial( { size: snowSize, map: snowSprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true } );
+					snowMaterials[i].color.setHSL( snowColor[0], snowColor[1], snowColor[2] );
+
+					particles = new THREE.Points( snowGeometry, snowMaterials[i] );
+
+					particles.rotation.x = Math.random() * 6;
+					particles.rotation.y = Math.random() * 6;
+					particles.rotation.z = Math.random() * 6;
+
+					scene.add( particles );
+
+				}
+
+				renderer = new THREE.WebGLRenderer();
 				renderer.setClearColor( 0xbfd1e5 );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
@@ -100,8 +156,6 @@
 				stats.domElement.style.top = '0px';
 				container.appendChild( stats.domElement );
 
-				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-
 				//
 
 				window.addEventListener( 'resize', onWindowResize, false );
@@ -110,31 +164,30 @@
 
 			function onWindowResize() {
 
-				windowHalfX = window.innerWidth / 2;
-				windowHalfY = window.innerHeight / 2;
-
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
 
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
+				controls.handleResize();
+
 			}
 
 			function generateHeight( width, height ) {
 
-				var data = new Uint8Array( width * height ), perlin = new ImprovedNoise(),
-				size = width * height, quality = 2, z = Math.random() * 100;
+				var size = width * height, data = new Uint8Array( size ),
+				perlin = new ImprovedNoise(), quality = 1, z = Math.random() * 100;
 
 				for ( var j = 0; j < 4; j ++ ) {
-
-					quality *= 4;
 
 					for ( var i = 0; i < size; i ++ ) {
 
 						var x = i % width, y = ~~ ( i / width );
-						data[ i ] += Math.abs( perlin.noise( x / quality, y / quality, z ) * 0.5 ) * quality + 10;
+						data[ i ] += Math.abs( perlin.noise( x / quality, y / quality, z ) * quality * 1.75 );
 
 					}
+
+					quality *= 5;
 
 				}
 
@@ -144,7 +197,7 @@
 
 			function generateTexture( data, width, height ) {
 
-				var canvas, context, image, imageData,
+				var canvas, canvasScaled, context, image, imageData,
 				level, diff, vector3, sun, shade;
 
 				vector3 = new THREE.Vector3( 0, 0, 0 );
@@ -160,35 +213,51 @@
 				context.fillStyle = '#000';
 				context.fillRect( 0, 0, width, height );
 
-				image = context.getImageData( 0, 0, width, height );
-				
+				image = context.getImageData( 0, 0, canvas.width, canvas.height );
 				imageData = image.data;
 
-				for ( var i = 0, j = 0, l = imageData.length; i < l; i += 4, j ++  ) {
+				for ( var i = 0, j = 0, l = imageData.length; i < l; i += 4, j ++ ) {
 
-					vector3.x = data[ j - 1 ] - data[ j + 1 ];
+					vector3.x = data[ j - 2 ] - data[ j + 2 ];
 					vector3.y = 2;
-					vector3.z = data[ j - width ] - data[ j + width ];
+					vector3.z = data[ j - width * 2 ] - data[ j + width * 2 ];
 					vector3.normalize();
 
 					shade = vector3.dot( sun );
 
-					imageData[ i ] = ( 96 + shade * 128 ) * ( data[ j ] * 0.007 );
-					imageData[ i + 1 ] = ( 32 + shade * 96 ) * ( data[ j ] * 0.007 );
-					imageData[ i + 2 ] = ( shade * 96 ) * ( data[ j ] * 0.007 );
+					imageData[ i ] = ( 96 + shade * 128 ) * ( 0.5 + data[ j ] * 0.007 );
+					imageData[ i + 1 ] = ( 32 + shade * 96 ) * ( 0.5 + data[ j ] * 0.007 );
+					imageData[ i + 2 ] = ( shade * 96 ) * ( 0.5 + data[ j ] * 0.007 );
+				}
+
+				context.putImageData( image, 0, 0 );
+
+				// Scaled 4x
+
+				canvasScaled = document.createElement( 'canvas' );
+				canvasScaled.width = width * 4;
+				canvasScaled.height = height * 4;
+
+				context = canvasScaled.getContext( '2d' );
+				context.scale( 4, 4 );
+				context.drawImage( canvas, 0, 0 );
+
+				image = context.getImageData( 0, 0, canvasScaled.width, canvasScaled.height );
+				imageData = image.data;
+
+				for ( var i = 0, l = imageData.length; i < l; i += 4 ) {
+
+					var v = ~~ ( Math.random() * 5 );
+
+					imageData[ i ] += v;
+					imageData[ i + 1 ] += v;
+					imageData[ i + 2 ] += v;
 
 				}
 
 				context.putImageData( image, 0, 0 );
 
-				return canvas;
-
-			}
-
-			function onDocumentMouseMove(event) {
-
-				mouseX = event.clientX - windowHalfX;
-				mouseY = event.clientY - windowHalfY;
+				return canvasScaled;
 
 			}
 
@@ -205,16 +274,14 @@
 
 			function render() {
 
-				camera.position.x += ( mouseX - camera.position.x ) * 0.05;
-				camera.position.y += ( - mouseY - camera.position.y ) * 0.05 + 15;
-				camera.lookAt( scene.position );
-
+				controls.update( clock.getDelta() );
 				renderer.render( scene, camera );
 
 			}
-
-
 		</script>
 
 	</body>
 </html>
+
+
+
