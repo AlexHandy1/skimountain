@@ -38,6 +38,8 @@
 		<script src="renderers/Projector.js"></script>
 		<script src="renderers/CanvasRenderer.js"></script>
 		<script src="controls/FirstPersonControls.js"></script>
+		<script src="effects/StereoEffect.js"></script>
+
 
 		<script src="libs/stats.min.js"></script>
 
@@ -47,7 +49,7 @@
 
 			var container, stats;
 
-			var camera, controls, scene, renderer;
+			var camera, controls, scene, renderer, effect;
 
 			var particles, snowGeometry, snowMaterials = [], snowParameters, snowI, snowH, snowColor, snowSprite, snowSize;
 
@@ -151,6 +153,10 @@
 
 				container.appendChild( renderer.domElement );
 
+				effect = new THREE.StereoEffect( renderer );
+				effect.eyeSeparation = 10;
+				effect.setSize( window.innerWidth, window.innerHeight );
+
 				stats = new Stats();
 				stats.domElement.style.position = 'absolute';
 				stats.domElement.style.top = '0px';
@@ -167,7 +173,7 @@
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				effect.setSize( window.innerWidth, window.innerHeight );
 
 				controls.handleResize();
 
@@ -275,7 +281,7 @@
 			function render() {
 
 				controls.update( clock.getDelta() );
-				renderer.render( scene, camera );
+				effect.render( scene, camera );
 
 			}
 		</script>
