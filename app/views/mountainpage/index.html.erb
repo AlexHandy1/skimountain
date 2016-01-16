@@ -37,8 +37,6 @@
 
 		<script src="renderers/Projector.js"></script>
 		<script src="renderers/CanvasRenderer.js"></script>
-		<script src="controls/FirstPersonControls.js"></script>
-		<script src="controls/PointerLockControls.js"></script>
 		<script src="controls/DeviceOrientationControls.js"></script>
   		<script src="controls/OrbitControls.js"></script>
 		<script src="effects/StereoEffect.js"></script>
@@ -80,20 +78,13 @@
 
 				scene = new THREE.Scene();
 
-				// controls = new THREE.FirstPersonControls( camera );
-				// controls.movementSpeed = 1000;
-				// controls.lookSpeed = 0.1;
-				// controls.mouseDragOn = true;
-
 				controls = new THREE.OrbitControls(camera, element);
-				// controls.rotateUp(Math.PI / 4);
+				
 				controls.target.set(
 					camera.position.x + 0.1,
 					camera.position.y,
 					camera.position.z
 					);
-				// controls.noZoom = true;
-				// controls.noPan = true;
 
 				function setOrientationControls(e) {
 					if (!e.alpha) {
@@ -112,12 +103,10 @@
 
 				data = generateHeight( worldWidth, worldDepth );
 
-				//find the optimum position - problem is how will this change in the phone?
 				camera.position.x = 100;
 				camera.position.y = 1000;
 				camera.position.z = 3000;
-				// camera.position.y = data[ worldHalfWidth + worldHalfDepth * worldWidth ] * 10 + 500;
-
+			
 				var geometry = new THREE.PlaneBufferGeometry( 7500, 7500, worldWidth - 1, worldDepth - 1 );
 				geometry.rotateX( - Math.PI / 2 );
 
@@ -182,11 +171,6 @@
 					scene.add( particles );
 
 				}
-
-				// renderer = new THREE.WebGLRenderer();
-				// renderer.setClearColor( 0xbfd1e5 );
-				// renderer.setPixelRatio( window.devicePixelRatio );
-				// renderer.setSize( window.innerWidth, window.innerHeight );
 
 				container.innerHTML = "";
 
@@ -323,7 +307,7 @@
 				effect.render( scene, camera );
 
 			}
-			
+
 			function fullscreen() {
 		      if (container.requestFullscreen) {
 		        container.requestFullscreen();
